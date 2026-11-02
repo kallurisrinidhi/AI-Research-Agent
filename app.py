@@ -1,19 +1,26 @@
 
 import os
 import streamlit as st
+from pathlib import Path
 
-try:
-    for key in [
-        "GEMINI_API_KEY",
-        "GROQ_API_KEY",
-        "TAVILY_API_KEY"
-    ]:
+# ==================================================
+# 1. LOAD API KEYS (LOCAL + STREAMLIT CLOUD)
+# ==================================================
+
+for key in [
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "TAVILY_API_KEY"
+]:
+    try:
         if key in st.secrets:
             os.environ[key] = str(st.secrets[key])
-except Exception:
-    pass
-import streamlit as st
-from pathlib import Path
+    except Exception:
+        pass
+
+# ==================================================
+# 2. IMPORT PROJECT MODULES
+# ==================================================
 
 from src.researcher import conduct_research
 from src.analyzer import analyze_research
@@ -36,9 +43,8 @@ from src.rag import (
     get_last_retrieved_sources
 )
 
-
 # ==================================================
-# 1. INITIAL SETUP
+# 3. INITIAL SETUP
 # ==================================================
 
 st.set_page_config(
@@ -68,9 +74,8 @@ for key, value in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-
 # ==================================================
-# 2. HELPER FUNCTION: GENERATE ANALYSIS
+# 4. HELPER FUNCTION: GENERATE ANALYSIS
 # ==================================================
 
 def run_analysis():
@@ -82,18 +87,15 @@ def run_analysis():
         return
 
     try:
-
-        with st.spinner("Gemini is analyzing your research..."):
-
+        with st.spinner("AI is analyzing your research..."):
             analysis = analyze_research(research_data)
 
         if not analysis:
-            raise ValueError("Gemini returned an empty analysis.")
+            raise ValueError("AI returned an empty analysis.")
 
         st.session_state.analysis = analysis
         st.session_state.analysis_error = None
 
-        # Save only once to prevent duplicate history records
         if not st.session_state.analysis_saved:
 
             save_research(
@@ -104,8 +106,7 @@ def run_analysis():
 
             st.session_state.analysis_saved = True
 
-        # Generate TXT and PDF reports
-        with st.spinner("Generating PDF and TXT reports..."):
+        with st.spinner("Generating TXT and PDF reports..."):
 
             txt_path = generate_report(
                 st.session_state.research_topic,
@@ -120,7 +121,7 @@ def run_analysis():
         st.session_state.txt_path = str(txt_path)
         st.session_state.pdf_path = str(pdf_path)
 
-        st.success("AI analysis and reports generated successfully!")
+        st.success("Analysis and reports generated successfully!")
 
     except Exception as error:
 
@@ -129,28 +130,26 @@ def run_analysis():
         st.error(f"AI analysis failed: {error}")
 
         st.warning(
-            "Your collected sources and FAISS knowledge base "
-            "are preserved. You can retry the analysis."
+            "Your collected sources and knowledge base are preserved. "
+            "You can retry the analysis."
         )
 
-
 # ==================================================
-# 3. APPLICATION HEADER
+# 5. APPLICATION HEADER
 # ==================================================
 
 st.title("🤖 AI Research Agent")
 
 st.write(
     "An intelligent research assistant that searches the web, "
-    "analyzes information using Gemini, evaluates sources, "
+    "analyzes information using Gemini and Groq, evaluates sources, "
     "generates reports, and answers questions using RAG."
 )
 
 st.divider()
 
-
 # ==================================================
-# 4. RESEARCH HISTORY
+# 6. RESEARCH HISTORY
 # ==================================================
 
 st.sidebar.title("📚 Research History")
@@ -183,13 +182,11 @@ if history:
 
             st.session_state.research_data = None
             st.session_state.evaluated_sources = []
-
             st.session_state.analysis_error = None
             st.session_state.analysis_saved = True
 
             st.session_state.txt_path = None
             st.session_state.pdf_path = None
-
             st.session_state.kb_ready = False
 
             st.session_state.rag_answer = None
@@ -200,12 +197,10 @@ if history:
             st.rerun()
 
 else:
-
     st.sidebar.info("No previous research available.")
 
-
 # ==================================================
-# 5. START NEW RESEARCH
+# 7. START NEW RESEARCH
 # ==================================================
 
 st.header("🔍 Start New Research")
@@ -224,7 +219,6 @@ if st.button("🚀 Start Research", type="primary"):
 
     else:
 
-        # Reset previous research state
         st.session_state.analysis = None
         st.session_state.research_data = None
         st.session_state.evaluated_sources = []
@@ -236,7 +230,6 @@ if st.button("🚀 Start Research", type="primary"):
         st.session_state.pdf_path = None
 
         st.session_state.kb_ready = False
-
         st.session_state.rag_answer = None
         st.session_state.rag_sources = []
 
@@ -245,9 +238,7 @@ if st.button("🚀 Start Research", type="primary"):
 
         try:
 
-            # ------------------------------------------
-            # STEP 1: TAVILY WEB SEARCH
-            # ------------------------------------------
+            # STEP 1: TAVILY SEARCH
 
             with st.spinner("Searching the web using Tavily..."):
 
@@ -270,9 +261,7 @@ if st.button("🚀 Start Research", type="primary"):
                     f"Successfully collected {len(sources)} sources!"
                 )
 
-                # --------------------------------------
                 # STEP 2: SOURCE CREDIBILITY
-                # --------------------------------------
 
                 evaluated_sources = evaluate_sources(
                     topic,
@@ -281,9 +270,7 @@ if st.button("🚀 Start Research", type="primary"):
 
                 st.session_state.evaluated_sources = evaluated_sources
 
-                # --------------------------------------
-                # STEP 3: SAVE FAISS KNOWLEDGE BASE
-                # --------------------------------------
+                # STEP 3: FAISS KNOWLEDGE BASE
 
                 with st.spinner("Creating FAISS knowledge base..."):
 
@@ -302,9 +289,8 @@ if st.button("🚀 Start Research", type="primary"):
 
             st.error(f"Research collection failed: {error}")
 
-
 # ==================================================
-# 6. AUTOMATIC GEMINI ANALYSIS
+# 8. AUTOMATIC AI ANALYSIS
 # ==================================================
 
 if (
@@ -315,9 +301,8 @@ if (
 
     run_analysis()
 
-
 # ==================================================
-# 7. RETRY GEMINI ANALYSIS
+# 9. RETRY AI ANALYSIS
 # ==================================================
 
 if (
@@ -337,9 +322,8 @@ if (
 
         run_analysis()
 
-
 # ==================================================
-# 8. DISPLAY RESEARCH ANALYSIS
+# 10. DISPLAY RESEARCH ANALYSIS
 # ==================================================
 
 if st.session_state.analysis:
@@ -355,9 +339,8 @@ if st.session_state.analysis:
 
     st.markdown(st.session_state.analysis)
 
-
 # ==================================================
-# 9. SOURCE CREDIBILITY
+# 11. SOURCE CREDIBILITY
 # ==================================================
 
 if st.session_state.evaluated_sources:
@@ -398,9 +381,8 @@ if st.session_state.evaluated_sources:
 
             st.write(source.get("content", ""))
 
-
 # ==================================================
-# 10. DOWNLOAD RESEARCH REPORTS
+# 12. DOWNLOAD REPORTS
 # ==================================================
 
 if st.session_state.txt_path or st.session_state.pdf_path:
@@ -445,9 +427,8 @@ if st.session_state.txt_path or st.session_state.pdf_path:
                         mime="application/pdf"
                     )
 
-
 # ==================================================
-# 11. SAVED KNOWLEDGE LIBRARY
+# 13. SAVED KNOWLEDGE LIBRARY
 # ==================================================
 
 st.divider()
@@ -456,14 +437,9 @@ st.header("📚 Saved Research Knowledge Library")
 
 saved_topics = get_saved_topics()
 
+selected_topic = None
+
 if saved_topics:
-
-    if (
-        "selected_kb_topic" not in st.session_state
-        or st.session_state.selected_kb_topic not in saved_topics
-    ):
-
-        st.session_state.selected_kb_topic = saved_topics[-1]
 
     selected_topic = st.selectbox(
         "Choose a saved research topic",
@@ -499,9 +475,8 @@ else:
         "Start a research task to create one."
     )
 
-
 # ==================================================
-# 12. ASK AI USING RAG
+# 14. ASK AI USING RAG
 # ==================================================
 
 st.divider()
@@ -512,7 +487,7 @@ st.write(
     "Ask questions based on your saved research documents."
 )
 
-if saved_topics:
+if saved_topics and selected_topic:
 
     question = st.text_input(
         "Enter your question",
@@ -551,9 +526,8 @@ else:
 
     st.info("Create a knowledge base before asking questions.")
 
-
 # ==================================================
-# 13. DISPLAY AI ANSWER AND REFERENCES
+# 15. DISPLAY AI ANSWER AND REFERENCES
 # ==================================================
 
 if st.session_state.rag_answer:
@@ -576,7 +550,6 @@ if st.session_state.rag_answer:
                 url = source.get("url", "")
 
                 if url:
-
                     st.markdown(f"[Open Source]({url})")
 
                 st.write(
@@ -593,15 +566,13 @@ if st.session_state.rag_answer:
 
         st.info("No source references were returned.")
 
-
 # ==================================================
-# 14. FOOTER
+# 16. FOOTER
 # ==================================================
 
 st.divider()
 
 st.caption(
     "AI Research Agent | Built using Python, Streamlit, "
-    "Gemini, Tavily, FAISS, and RAG."
+    "Gemini, Groq, Tavily, FAISS, and RAG."
 )
-
